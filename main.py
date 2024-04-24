@@ -33,16 +33,16 @@ model_path = os.path.join(module_dir, "model", "model.pkl")
 # Load the model
 model = load_model(model_path)
 
-# TODO: create a RESTful API using FastAPI
+# Create a RESTful API using FastAPI
 app = FastAPI()
 
-# TODO: create a GET on the root giving a welcome message
+# Create a GET on the root giving a welcome message
 @app.get("/")
 async def get_root():
     """ Welcome message """
-    return {"message": "Welcome to the model API!"}
+    return {"message": "Welcome!"}
 
-# TODO: create a POST on a different path that does model inference
+# Create a POST on a different path that does model inference
 @app.post("/data/")
 async def post_inference(data: Data):
     # DO NOT MODIFY: turn the Pydantic model into a dict.
@@ -68,3 +68,4 @@ async def post_inference(data: Data):
     )
     _inference = inference(model, data_processed)
     return {"result": apply_label(_inference)}
+

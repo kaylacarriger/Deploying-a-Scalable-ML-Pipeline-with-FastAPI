@@ -1,112 +1,81 @@
-import pickle
+import os
 import pandas as pd
-from sklearn.metrics import fbeta_score, precision_score, recall_score
-from sklearn.ensemble import RandomForestClassifier
+from sklearn.model_selection import train_test_split
 
-def train_model(X_train: pd.DataFrame, y_train: pd.Series) -> RandomForestClassifier:
-    """
-    Trains a machine learning model and returns it.
-    """
-    rf_model = RandomForestClassifier()
-    rf_model.fit(X_train, y_train)
-    return rf_model
+from ml.data import process_data
+from ml.model import (
+    compute_model_metrics,
+    inference,
+    load_model,
+    performance_on_categorical_slice,
+    save_model,
+    train_model,
+)
 
-def compute_model_metrics(y_true: pd.Series, preds: pd.Series) -> tuple[float, float, float]:
-    """
-    Validates the trained machine learning model using precision, recall, and F1.
+# TODO: load the cencus.csv data
+file_dir = os.path.dirname(__file__)
+data = pd.read_csv(os.path.join(file_dir,"./data/census.csv"))
 
-    Inputs
-    ------
-    y_true : pd.Series
-        Known labels, binarized.
-    preds : pd.Series
-        Predicted labels, binarized.
-    Returns
-    -------
-    precision : float
-    recall : float
-    fbeta : float
-    """
-    fbeta = fbeta_score(y_true, preds, beta=1, zero_division=1)
-    precision = precision_score(y_true, preds, zero_division=1)
-    recall = recall_score(y_true, preds, zero_division=1)
-    return precision, recall, fbeta
+# TODO: split the provided data to have a train dataset and a test dataset
+train, test = train_test_split(data, test_size=0.2, random_state=42)
 
-def inference(model: RandomForestClassifier, X: pd.DataFrame) -> pd.Series:
-    """ Run model inferences and return the predictions.
+# DO NOT MODIFY
+cat_features = [
+    "workclass",
+    "education",
+    "marital-status",
+    "occupation",
+    "relationship",
+    "race",
+    "sex",
+    "native-country",
+]
 
-    Inputs
-    ------
-    model : RandomForestClassifier
-        Trained machine learning model.
-    X : pd.DataFrame
-        Data used for prediction.
-    Returns
-    -------
-    preds : pd.Series
-        Predictions from the model.
-    """
-    preds = model.predict(X)
-    return preds
+# TODO: use the process_data function provided to process the data.
+X_train, y_train, encoder, lb = process_data(
+    train,
+    categorical_features=cat_features,
+    label="salary",
+    training=True
+)
 
-def save_model(model, path: str):
-    """ Serializes model to a file.
+X_test, y_test, _, _ = process_data(
+    test,
+    categorical_features=cat_features,
+    label="salary",
+    training=False,
+    encoder=encoder,
+    lb=lb,
+)
 
-    Inputs
-    ------
-    model : object
-        Trained machine learning model or OneHotEncoder.
-    path : str
-        Path to save pickle file.
-    """
-    with open(path, "wb") as f:
-        pickle.dump(model, f)
+# TODO: use the train_model function to train the model on the training dataset
+model = train_model(X_train, y_train)
 
-def load_model(path: str):
-    """ Loads pickle file from `path` and returns it."""
-    with open(path, "rb") as f:
-        model = pickle.load(f)
-    return model
+# save the model and the encoder
+model_path = os.path.join(file_dir, "model", "model.pkl")
+save_model(model, model_path)
+encoder_path = os.path.join(file_dir, "model", "encoder.pkl")
+save_model(encoder, encoder_path)
 
-def performance_on_categorical_slice(df: pd.DataFrame, feature: str, y: pd.Series, preds: pd.Series) -> pd.DataFrame:
-    """ Computes the model metrics on a slice of the data specified by a column name.
+# load the model
+model = load_model(model_path)
 
-    Processes the data using one hot encoding for the categorical features and a
-    label binarizer for the labels. This can be used in either training or
-    inference/validation.
+# TODO: use the inference function to run the model inferences on the test dataset.
+preds = inference(model, X_test)
 
-    Inputs
-    ------
-    df : pd.DataFrame
-        Dataframe containing the features and label.
-    feature : str
-        Column containing the sliced feature.
-    y : pd.Series
-        Known labels, binarized.
-    preds : pd.Series
-        Predicted labels, binarized.
-    Returns
-    -------
-    perf_df : pd.DataFrame
-        Dataframe containing performance metrics for each slice.
-    """
-    slice_options = df[feature].unique().tolist()
-    perf_df = pd.DataFrame(index=slice_options, columns=['feature', 'n_samples', 'precision', 'recall', 'fbeta'])
-    for option in slice_options:
-        slice_mask = df[feature] == option
+# Calculate and print the metrics
+p, r, fb = compute_model_metrics(y_test, preds)
+print(f"Precision: {p:.4f} | Recall: {r:.4f} | F1: {fb:.4f}")
 
-        slice_y = y[slice_mask]
-        slice_preds = preds[slice_mask]
-        precision, recall, fbeta = compute_model_metrics(slice_y, slice_preds)
-        
-        perf_df.at[option, 'feature'] = feature
-        perf_df.at[option, 'n_samples'] = len(slice_y)
-        perf_df.at[option, 'precision'] = precision
-        perf_df.at[option, 'recall'] = recall
-        perf_df.at[option, 'fbeta'] = fbeta
-
-    # Reorder columns in the performance dataframe
-    perf_df.reset_index(inplace=True)
-    perf_df.rename(columns={'index': 'feature value'}, inplace=True)
-
-    return perf_df
+# TODO: compute the performance on model slices using the performance_on_categorical_slice function
+# iterate through the categorical features
+for col in cat_features:
+    # iterate through the unique values in one categorical feature
+    for slicevalue in sorted(test[col].unique()):
+        count = test[test[col] == slicevalue].shape[0]
+        p, r, fb = performance_on_categorical_slice(
+            test, col, slicevalue, cat_features, "salary", encoder, lb, model
+        )
+        with open("slice_output.txt", "a") as f:
+            print(f"{col}: {slicevalue}, Count: {count:,}", file=f)
+            print(f"Precision: {p:.4f} | Recall: {r:.4f} | F1: {fb:.4f}", file=f)

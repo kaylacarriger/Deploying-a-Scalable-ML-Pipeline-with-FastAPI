@@ -33,6 +33,13 @@ r = requests.post("http://127.0.0.1:8000/predict", json=data)
 # Print the status code
 print("POST Status Code:", r.status_code)
 
-# Print the result
-print("POST Result:", r.json())
-
+# Check if the response is successful and has content
+if r.status_code == 200 and r.content:
+    try:
+        # Parse the JSON response
+        result = r.json()
+        print("POST Result:", result)
+    except json.decoder.JSONDecodeError:
+        print("Error: Response is not in JSON format")
+else:
+    print("Error: Failed to get a valid response")

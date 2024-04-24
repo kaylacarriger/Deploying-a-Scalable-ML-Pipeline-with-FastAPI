@@ -1,68 +1,26 @@
-from sklearn.metrics import fbeta_score, precision_score, recall_score, confusion_matrix
-from sklearn.ensemble import GradientBoostingClassifier
-from sklearn.model_selection import GridSearchCV
-import pandas as pd
-import multiprocessing
-import logging
 import pickle
+import pandas as pd
+from sklearn.metrics import fbeta_score, precision_score, recall_score, confusion_matrix
+from sklearn.ensemble import RandomForestClassifier
+from ml.data import process_data
 
-
-logging.basicConfig(filename='journal.log',
-                    level=logging.INFO,
-                    filemode='w',
-                    format='%(name)s - %(levelname)s - %(message)s')
-
-
-# Optional: implement hyperparameter tuning.
-def train_model(X_train, y_train):
+def train_model(X_train: pd.DataFrame, y_train: pd.Series) -> RandomForestClassifier:
     """
     Trains a machine learning model and returns it.
-    Use GridSearch for hyperparameter tuning and cross-validation
+    """
+    rf_model = RandomForestClassifier()
+    rf_model.fit(X_train, y_train)
+    return rf_model
+
+def compute_model_metrics(y_true: pd.Series, preds: pd.Series) -> tuple[float, float, float]:
+    """
+    Validates the trained machine learning model using precision, recall, and F1.
 
     Inputs
     ------
-    X_train : np.array
-        Training data.
-    y_train : np.array
-        Labels.
-    Returns
-    -------
-    model
-        Trained machine learning model.
-    """
-    parameters = {
-        'n_estimators': [10, 20, 30],
-        'max_depth': [5, 10],
-        'min_samples_split': [20, 50, 100],
-        'learning_rate': [1.0],  # 0.1,0.5,
-    }
-
-    njobs = multiprocessing.cpu_count() - 1
-    logging.info("Searching best hyperparameters on {} cores".format(njobs))
-
-    clf = GridSearchCV(GradientBoostingClassifier(random_state=0),
-                       param_grid=parameters,
-                       cv=3,
-                       n_jobs=njobs,
-                       verbose=2,
-                       )
-
-    clf.fit(X_train, y_train)
-    logging.info("********* Best parameters found ***********")
-    logging.info("BEST PARAMS: {}".format(clf.best_params_))
-
-    return clf
-
-
-def compute_model_metrics(y, preds):
-    """
-    Validates the trained machine learning model using precision, recall, F1.
-
-    Inputs
-    ------
-    y : np.array
+    y_true : pd.Series
         Known labels, binarized.
-    preds : np.array
+    preds : pd.Series
         Predicted labels, binarized.
     Returns
     -------
@@ -70,33 +28,44 @@ def compute_model_metrics(y, preds):
     recall : float
     fbeta : float
     """
-    fbeta = fbeta_score(y, preds, beta=1, zero_division=1)
-    precision = precision_score(y, preds, zero_division=1)
-    recall = recall_score(y, preds, zero_division=1)
+    fbeta = fbeta_score(y_true, preds, beta=1, zero_division=1)
+    precision = precision_score(y_true, preds, zero_division=1)
+    recall = recall_score(y_true, preds, zero_division=1)
     return precision, recall, fbeta
 
-
-def inference(model, X):
+def inference(model: RandomForestClassifier, X: pd.DataFrame) -> pd.Series:
     """ Run model inferences and return the predictions.
 
     Inputs
     ------
-    model : ???
+    model : RandomForestClassifier
         Trained machine learning model.
-    X : np.array
+    X : pd.DataFrame
         Data used for prediction.
     Returns
     -------
-    preds : np.array
+    preds : pd.Series
         Predictions from the model.
     """
     preds = model.predict(X)
-
     return preds
 
-def load_model(path):
+def save_model(model, path: str):
+    """ Serializes model to a file.
+
+    Inputs
+    ------
+    model : object
+        Trained machine learning model or OneHotEncoder.
+    path : str
+        Path to save pickle file.
+    """
+    with open(path, "wb") as f:
+        pickle.dump(model, f)
+
+def load_model(path: str):
     """ Loads pickle file from `path` and returns it."""
-    with open(path, 'rb') as f:
+    with open(path, "rb") as f:
         model = pickle.load(f)
     return model
 
@@ -116,51 +85,57 @@ def compute_confusion_matrix(y, preds, labels=None):
     cm = confusion_matrix(y, preds)
     return cm
 
+def performance_on_categorical_slice(
+    data, column_name, slice_value, categorical_features, label, encoder, lb, model
+):
+    """ Computes the model metrics on a slice of the data specified by a column name and
 
+    Processes the data using one hot encoding for the categorical features and a
+    label binarizer for the labels. This can be used in either training or
+    inference/validation.
 
-def compute_slices(df, feature, y, preds):
-    """
-    Compute the performance on slices for a given categorical feature
-    a slice corresponds to one value option of the categorical feature analyzed
+    Inputs
     ------
-    df: 
-        test dataframe pre-processed with features as column used for slices
-    feature:
-        feature on which to perform the slices
-    y : np.array
-        corresponding known labels, binarized.
-    preds : np.array
-        Predicted labels, binarized
+    data : pd.DataFrame
+        Dataframe containing the features and label. Columns in `categorical_features`
+    column_name : str
+        Column containing the sliced feature.
+    slice_value : str, int, float
+        Value of the slice feature.
+    categorical_features: list
+        List containing the names of the categorical features (default=[])
+    label : str
+        Name of the label column in `X`. If None, then an empty array will be returned
+        for y (default=None)
+    encoder : sklearn.preprocessing._encoders.OneHotEncoder
+        Trained sklearn OneHotEncoder, only used if training=False.
+    lb : sklearn.preprocessing._label.LabelBinarizer
+        Trained sklearn LabelBinarizer, only used if training=False.
+    model : sklearn.base.BaseEstimator
+        Model used for the task.
 
     Returns
-    ------
-    Dataframe with
-        n_samples: integer - number of data samples in the slice
-        precision : float
-        recall : float
-        fbeta : float
-    row corresponding to each of the unique values taken by the feature (slice)
-    """    
-    slice_options = df[feature].unique().tolist()
-    perf_df = pd.DataFrame(index=slice_options, 
-                            columns=['feature','n_samples','precision', 'recall', 'fbeta'])
-    for option in slice_options:
-        slice_mask = df[feature]==option
+    -------
+    precision : float
+    recall : float
+    fbeta : float
 
-        slice_y = y[slice_mask]
-        slice_preds = preds[slice_mask]
-        precision, recall, fbeta = compute_model_metrics(slice_y, slice_preds)
-        
-        perf_df.at[option, 'feature'] = feature
-        perf_df.at[option, 'n_samples'] = len(slice_y)
-        perf_df.at[option, 'precision'] = precision
-        perf_df.at[option, 'recall'] = recall
-        perf_df.at[option, 'fbeta'] = fbeta
+    """
+    # Process the slice data
+    X_slice, y_slice, _, _ = process_data(
+        data=data[data[column_name] == slice_value],
+        categorical_features=categorical_features,
+        label=label,
+        training=False,
+        encoder=encoder,
+        lb=lb,
+    )
+    
+    # Get predictions
+    preds = inference(model, X_slice)
+    
+    # Calculate metrics
+    precision, recall, fbeta = compute_model_metrics(y_slice, preds)
+    
+    return precision, recall, fbeta
 
-    # reorder columns in performance dataframe
-    perf_df.reset_index(names='feature value', inplace=True)
-    colList = list(perf_df.columns)
-    colList[0], colList[1] =  colList[1], colList[0]
-    perf_df = perf_df[colList]
-
-    return perf_df

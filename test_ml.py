@@ -1,11 +1,9 @@
-import logging
 import os
 import pickle
 import pytest
 import pandas as pd
 from sklearn.model_selection import train_test_split
-from sklearn.exceptions import NotFittedError
-from ml.model import inference, compute_model_metrics, compute_confusion_matrix
+from ml.model import inference, compute_model_metrics
 from ml.data import process_data
 
 """
@@ -64,38 +62,24 @@ def test_import_data(path):
 
 def test_features(data, features):
     """
-    Check that categorical features are in dataset
+    Test that categorical features are in dataset
     """
     assert sorted(set(data.columns).intersection(features)) == sorted(features)
 
 
 def test_is_fitted_model(train_dataset):
     """
-    Check saved model is fitted
+    Test saved model is fitted
     """
     X_train, y_train = train_dataset
     savepath = "./model/model.pkl"
     model = pickle.load(open(savepath, 'rb'))
-    assert model.predict(X_train) is not None
-
-
-def test_inference(train_dataset):
-    """
-    Check inference function
-    """
-    X_train, y_train = train_dataset
-    savepath = "./model/model.pkl"
-    if os.path.isfile(savepath):
-        model = pickle.load(open(savepath, 'rb'))
-        preds = inference(model, X_train)
-        assert preds is not None
-    else:
-        pass
+    assert model.predict(X_train).shape[0] > 0
 
 
 def test_compute_model_metrics(train_dataset):
     """
-    Check calculation of performance metrics function
+    Test performance metrics function
     """
     X_train, y_train = train_dataset
     savepath = "./model/model.pkl"
@@ -107,20 +91,7 @@ def test_compute_model_metrics(train_dataset):
         assert recall is not None
         assert fbeta is not None
     else:
-        pass
+        pytest.fail("File not found.")
 
 
-def test_compute_confusion_matrix(train_dataset):
-    """
-    Check calculation of confusion matrix function
-    """
-    X_train, y_train = train_dataset
-    savepath = "./model/model.pkl"
-    if os.path.isfile(savepath):
-        model = pickle.load(open(savepath, 'rb'))
-        preds = inference(model, X_train)
-        cm = compute_confusion_matrix(y_train, preds)
-        assert cm is not None
-    else:
-        pass
 

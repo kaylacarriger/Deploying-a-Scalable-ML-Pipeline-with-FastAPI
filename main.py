@@ -69,3 +69,24 @@ async def post_inference(data: Data):
     _inference = inference(model, data_processed)
     return {"result": apply_label(_inference)}
 
+@app.post("/predict/")
+async def predict(data: Data):
+    data_dict = data.dict()
+    data = {k.replace("_", "-"): [v] for k, v in data_dict.items()}
+    data = pd.DataFrame.from_dict(data)
+
+    cat_features = [
+        "workclass",
+        "education",
+        "marital-status",
+        "occupation",
+        "relationship",
+        "race",
+        "sex",
+        "native-country",
+    ]
+    data_processed, _, _, _ = process_data(
+        data, categorical_features=cat_features, training=False
+    )
+    _inference = inference(model, data_processed)
+    return {"result": apply_label(_inference)}

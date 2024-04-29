@@ -1,5 +1,6 @@
 import numpy as np
-from sklearn.preprocessing import LabelBinarizer, OneHotEncoder
+import pandas as pd
+from sklearn.preprocessing import OneHotEncoder, LabelBinarizer
 
 
 def process_data(
@@ -7,16 +8,19 @@ def process_data(
 ):
     """ Process the data used in the machine learning pipeline.
 
+
     Processes the data using one hot encoding for the categorical features and a
     label binarizer for the labels. This can be used in either training or
     inference/validation.
 
+
     Note: depending on the type of model used, you may want to add in functionality that
     scales the continuous data.
 
+
     Inputs
     ------
-    X : pd.DataFrame
+    data : pd.DataFrame
         Dataframe containing the features and label. Columns in `categorical_features`
     categorical_features: list[str]
         List containing the names of the categorical features (default=[])
@@ -29,6 +33,7 @@ def process_data(
         Trained sklearn OneHotEncoder, only used if training=False.
     lb : sklearn.preprocessing._label.LabelBinarizer
         Trained sklearn LabelBinarizer, only used if training=False.
+
 
     Returns
     -------
@@ -44,16 +49,19 @@ def process_data(
         passed in.
     """
 
+
     if label is not None:
         y = X[label]
         X = X.drop([label], axis=1)
     else:
         y = np.array([])
 
-    X_categorical = X[categorical_features].values
-    X_continuous = X.drop(*[categorical_features], axis=1)
 
-    if training is True:
+    X_categorical = X[categorical_features].values
+    X_continuous = X.drop(categorical_features, axis=1)
+
+
+    if training:
         encoder = OneHotEncoder(sparse=False, handle_unknown="ignore")
         lb = LabelBinarizer()
         X_categorical = encoder.fit_transform(X_categorical)
@@ -66,8 +74,12 @@ def process_data(
         except AttributeError:
             pass
 
+
     X = np.concatenate([X_continuous, X_categorical], axis=1)
     return X, y, encoder, lb
+
+
+
 
 def apply_label(inference):
     """ Convert the binary label in a single inference sample into string output."""

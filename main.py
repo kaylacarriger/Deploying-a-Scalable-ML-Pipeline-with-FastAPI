@@ -5,6 +5,7 @@ from pydantic import BaseModel, Field
 from ml.data import apply_label, process_data
 from ml.model import inference, load_model
 
+
 # DO NOT MODIFY
 class Data(BaseModel):
     age: int = Field(..., example=37)
@@ -24,23 +25,29 @@ class Data(BaseModel):
     hours_per_week: int = Field(..., example=40, alias="hours-per-week")
     native_country: str = Field(..., example="United-States", alias="native-country")
 
+
 # Get the directory path of the current module
 module_dir = os.path.dirname(__file__)
+
 
 # Define the relative path of the model file
 model_path = os.path.join(module_dir, "model", "model.pkl")
 
+
 # Load the model
 model = load_model(model_path)
 
+
 # Create a RESTful API using FastAPI
 app = FastAPI()
+
 
 # Create a GET on the root giving a welcome message
 @app.get("/")
 async def get_root():
     """ Welcome message """
     return {"message": "Welcome!"}
+
 
 # Create a POST on a different path that does model inference
 @app.post("/data/")
@@ -53,27 +60,6 @@ async def post_inference(data: Data):
     data = {k.replace("_", "-"): [v] for k, v in data_dict.items()}
     data = pd.DataFrame.from_dict(data)
 
-    cat_features = [
-        "workclass",
-        "education",
-        "marital-status",
-        "occupation",
-        "relationship",
-        "race",
-        "sex",
-        "native-country",
-    ]
-    data_processed, _, _, _ = process_data(
-        data, categorical_features=cat_features, training=False
-    )
-    _inference = inference(model, data_processed)
-    return {"result": apply_label(_inference)}
-
-@app.post("/predict/")
-async def predict(data: Data):
-    data_dict = data.dict()
-    data = {k.replace("_", "-"): [v] for k, v in data_dict.items()}
-    data = pd.DataFrame.from_dict(data)
 
     cat_features = [
         "workclass",
@@ -90,3 +76,5 @@ async def predict(data: Data):
     )
     _inference = inference(model, data_processed)
     return {"result": apply_label(_inference)}
+
+

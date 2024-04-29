@@ -1,14 +1,18 @@
 import json
 import requests
 
+
 # Send a GET using the URL http://127.0.0.1:8000
 r = requests.get("http://127.0.0.1:8000")
+
 
 # Print the status code
 print("GET Status Code:", r.status_code)
 
+
 # Print the welcome message
 print("Welcome Message:", r.text)
+
 
 data = {
     "age": 37,
@@ -27,11 +31,14 @@ data = {
     "native-country": "United-States",
 }
 
+
 # Send a POST using the data above
-r = requests.post("http://127.0.0.1:8000/predict", json=data)
+r = requests.post("http://127.0.0.1:8000/data", json=data)
+
 
 # Print the status code
 print("POST Status Code:", r.status_code)
+
 
 # Check if the response is successful and has content
 if r.status_code == 200 and r.content:

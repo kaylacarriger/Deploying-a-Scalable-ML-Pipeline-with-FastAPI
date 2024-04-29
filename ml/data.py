@@ -1,9 +1,9 @@
 import numpy as np
-import pandas as pd
-from sklearn.preprocessing import OneHotEncoder, LabelBinarizer
+from sklearn.preprocessing import LabelBinarizer, OneHotEncoder
+
 
 def process_data(
-    data, categorical_features=[], label=None, training=True, encoder=None, lb=None
+    X, categorical_features=[], label=None, training=True, encoder=None, lb=None
 ):
     """ Process the data used in the machine learning pipeline.
 
@@ -16,7 +16,7 @@ def process_data(
 
     Inputs
     ------
-    data : pd.DataFrame
+    X : pd.DataFrame
         Dataframe containing the features and label. Columns in `categorical_features`
     categorical_features: list[str]
         List containing the names of the categorical features (default=[])
@@ -45,15 +45,15 @@ def process_data(
     """
 
     if label is not None:
-        y = data[label]
-        X = data.drop([label], axis=1)
+        y = X[label]
+        X = X.drop([label], axis=1)
     else:
         y = np.array([])
 
     X_categorical = X[categorical_features].values
-    X_continuous = X.drop(categorical_features, axis=1)
+    X_continuous = X.drop(*[categorical_features], axis=1)
 
-    if training:
+    if training is True:
         encoder = OneHotEncoder(sparse=False, handle_unknown="ignore")
         lb = LabelBinarizer()
         X_categorical = encoder.fit_transform(X_categorical)
@@ -68,7 +68,6 @@ def process_data(
 
     X = np.concatenate([X_continuous, X_categorical], axis=1)
     return X, y, encoder, lb
-
 
 def apply_label(inference):
     """ Convert the binary label in a single inference sample into string output."""

@@ -32,10 +32,12 @@ module_dir = os.path.dirname(__file__)
 
 # Define the relative path of the model file
 model_path = os.path.join(module_dir, "model", "model.pkl")
+encoder_path = os.path.join(module_dir, "model", "encoder.pkl")
 
 
-# Load the model
+# Load the model and encoder
 model = load_model(model_path)
+encoder = load_model(encoder_path)
 
 
 # Create a RESTful API using FastAPI
@@ -60,7 +62,6 @@ async def post_inference(data: Data):
     data = {k.replace("_", "-"): [v] for k, v in data_dict.items()}
     data = pd.DataFrame.from_dict(data)
 
-
     cat_features = [
         "workclass",
         "education",
@@ -71,9 +72,13 @@ async def post_inference(data: Data):
         "sex",
         "native-country",
     ]
+
+    # Process data with the encoder
     data_processed, _, _, _ = process_data(
-        data, categorical_features=cat_features, training=False
+        data, categorical_features=cat_features, training=False, encoder=encoder
     )
+
+    # Perform inference
     _inference = inference(model, data_processed)
     return {"result": apply_label(_inference)}
 

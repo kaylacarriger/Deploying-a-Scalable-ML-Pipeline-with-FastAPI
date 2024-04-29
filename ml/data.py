@@ -20,7 +20,7 @@ def process_data(
 
     Inputs
     ------
-    data : pd.DataFrame
+    X : pd.DataFrame
         Dataframe containing the features and label. Columns in `categorical_features`
     categorical_features: list[str]
         List containing the names of the categorical features (default=[])

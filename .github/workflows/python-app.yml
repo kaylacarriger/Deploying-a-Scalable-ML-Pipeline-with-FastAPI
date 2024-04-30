@@ -28,11 +28,10 @@ jobs:
         python -m pip install --upgrade pip
         pip install flake8 pytest
         if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
-   - name: Run Flake8
-
+    - name: Run Flake8
       run: |
-
-        flake8 --exit-zero --extend-ignore=E,F,W
+            flake8 --exit-zero --extend-ignore=E,F,W
+        
     - name: Test with pytest
       run: |
         pytest

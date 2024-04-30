@@ -1,3 +1,5 @@
+Github repository link: https://github.com/kaylacarriger/Deploying-a-Scalable-ML-Pipeline-with-FastAPI/tree/main
+
 Working in a command line environment is recommended for ease of use with git and dvc. If on Windows, WSL1 or 2 is recommended.
 
 # Environment Set up (pip or conda)

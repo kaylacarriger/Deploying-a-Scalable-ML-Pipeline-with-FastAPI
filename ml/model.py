@@ -12,15 +12,15 @@ def train_model(X_train: pd.DataFrame, y_train: pd.Series) -> RandomForestClassi
     rf_model.fit(X_train, y_train)
     return rf_model
 
-def compute_model_metrics(y_true: pd.Series, preds: pd.Series) -> tuple[float, float, float]:
+def compute_model_metrics(y, preds):
     """
     Validates the trained machine learning model using precision, recall, and F1.
 
     Inputs
     ------
-    y_true : pd.Series
+    y : np.array
         Known labels, binarized.
-    preds : pd.Series
+    preds : np.array
         Predicted labels, binarized.
     Returns
     -------
@@ -28,9 +28,9 @@ def compute_model_metrics(y_true: pd.Series, preds: pd.Series) -> tuple[float, f
     recall : float
     fbeta : float
     """
-    fbeta = fbeta_score(y_true, preds, beta=1, zero_division=1)
-    precision = precision_score(y_true, preds, zero_division=1)
-    recall = recall_score(y_true, preds, zero_division=1)
+    fbeta = fbeta_score(y, preds, beta=1, zero_division=1)
+    precision = precision_score(y, preds, zero_division=1)
+    recall = recall_score(y, preds, zero_division=1)
     return precision, recall, fbeta
 
 def inference(model: RandomForestClassifier, X: pd.DataFrame) -> pd.Series:
@@ -123,7 +123,7 @@ def performance_on_categorical_slice(
     """
     # Process the slice data
     X_slice, y_slice, _, _ = process_data(
-        data=data[data[column_name] == slice_value],
+        X=data[data[column_name] == slice_value],
         categorical_features=categorical_features,
         label=label,
         training=False,
